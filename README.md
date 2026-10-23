@@ -11,7 +11,7 @@
 | **Assigned algorithm** | Greedy Best First Search (Algorithm No. 6) |
 | **Live website (GitHub Pages)** | https://samuelpatro2007-svg.github.io/AI-8Puzzle-Visualizer/ |
 | **Repository** | https://github.com/samuelpatro2007-svg/AI-8Puzzle-Visualizer |
-| **Demo video** | [`assets/demo-video.mp4`](assets/demo-video.mp4) |
+| **Demo video** | [`demo-video-small.mov`](demo-video-small.mov) |
 
 ![Home page](images/home.png)
 
