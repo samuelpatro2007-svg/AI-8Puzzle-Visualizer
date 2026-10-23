@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>8-Puzzle AI Visualizer — Greedy Best First Search</title>
+  <meta name="description" content="Interactive 8-Puzzle solver visualising Greedy Best First Search and other AI search algorithms. AI Digital Assignment by Thanuku Samuel Gullison Kishore Patro (24BCE0867).">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
+  <script>
+    // Apply the saved / system colour theme before first paint.
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("puzzle-theme"); } catch (e) {}
+      if (!t) t = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.setAttribute("data-bs-theme", t);
+    })();
+  </script>
+</head>
+<body>
+
+<!-- ============================== NAVIGATION ============================== -->
+<nav class="navbar navbar-expand-md sticky-top app-nav">
+  <div class="container-xl">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="#home">
+      <img src="assets/logo.svg" alt="" width="30" height="30">
+      <span>8-Puzzle <b>AI</b></span>
+    </a>
+    <div class="d-flex align-items-center gap-2 order-md-last">
+      <button class="btn btn-icon" id="themeToggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+    </div>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav ms-auto me-md-3">
+        <li class="nav-item"><a class="nav-link" data-page="home" href="#home">Home</a></li>
+        <li class="nav-item"><a class="nav-link" data-page="solver" href="#solver">Solver</a></li>
+        <li class="nav-item"><a class="nav-link" data-page="compare" href="#compare">Comparison</a></li>
+        <li class="nav-item"><a class="nav-link" data-page="algorithms" href="#algorithms">Algorithms</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<main>
+<!-- ================================ HOME ================================ -->
+<section class="page" id="page-home">
+  <div class="container-xl">
+    <div class="hero row align-items-center g-4 g-lg-5">
+      <div class="col-lg-7">
+        <p class="eyebrow">Artificial Intelligence · Digital Assignment (Case Study)</p>
+        <h1 class="display-title">Interactive 8-Puzzle Problem Solver using AI Search Algorithms</h1>
+        <p class="lead-text">Watch an AI agent search the 8-puzzle state space step by step: which node it expands, what it generates, what waits in the frontier and why it chooses the move it does.</p>
+
+        <div class="student-card">
+          <div><span>Student</span><strong>Thanuku Samuel Gullison Kishore Patro</strong></div>
+          <div><span>Registration No.</span><strong class="mono">24BCE0867</strong></div>
+          <div><span>Course</span><strong>Artificial Intelligence</strong></div>
+          <div><span>Assigned algorithm</span><strong class="text-gbfs">No. 6 — Greedy Best First Search</strong></div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-4">
+          <a href="#solver" class="btn btn-primary btn-lg">Open the solver</a>
+          <a href="#compare" class="btn btn-outline-secondary btn-lg">Compare algorithms</a>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="hero-demo">
+          <div class="demo-label"><span class="pill pill-gbfs">GBFS · Manhattan</span><span id="demoStep" class="mono">Step 0</span></div>
+          <div id="demoBoard" class="board board-lg mx-auto"></div>
+          <div class="demo-caption mono" id="demoCaption">283 / 164 / 7_5 → 123 / 8_4 / 765</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4 section-gap">
+      <div class="col-lg-6">
+        <h2 class="section-title">What is the 8-Puzzle?</h2>
+        <p>The 8-puzzle is a 3 × 3 board with eight numbered tiles and one blank square. A tile next to the blank can slide into it. The task is to transform a given <b>initial state</b> into a <b>goal state</b> using as few moves as possible.</p>
+        <p>It is a classic problem in Artificial Intelligence because it is small enough to visualise, yet large enough that blind search is visibly wasteful. That makes it ideal for comparing uninformed and informed (heuristic) search.</p>
+        <div class="fact-row">
+          <div class="fact"><b>9! = 362,880</b><span>tile arrangements</span></div>
+          <div class="fact"><b>181,440</b><span>reachable from any state</span></div>
+          <div class="fact"><b>≈ 2.67</b><span>average branching factor</span></div>
+          <div class="fact"><b>31</b><span>moves for the hardest puzzle</span></div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <h2 class="section-title">As a state-space search problem</h2>
+        <table class="table formulation">
+          <tbody>
+            <tr><th>State</th><td>An arrangement of the 8 tiles and the blank on the 3 × 3 grid</td></tr>
+            <tr><th>Initial state</th><td>Any arrangement entered by the user or generated at random</td></tr>
+            <tr><th>Actions</th><td>Move the blank <b>Up, Down, Left</b> or <b>Right</b> (2–4 legal moves per state)</td></tr>
+            <tr><th>Transition model</th><td>Swap the blank with the tile in the chosen direction</td></tr>
+            <tr><th>Goal test</th><td>The current state equals the goal state</td></tr>
+            <tr><th>Path cost</th><td>1 per move, so path cost = number of moves</td></tr>
+          </tbody>
+        </table>
+        <p class="small text-muted-2 mb-0"><b>Solvability:</b> sliding a tile never changes the parity of the number of inversions, so a goal is reachable only if the start and goal have the same inversion parity. The solver checks this before searching.</p>
+      </div>
+    </div>
+
+    <div class="section-gap">
+      <h2 class="section-title">Explore the project</h2>
+      <div class="row g-3">
+        <div class="col-md-4"><a class="feature" href="#solver"><span class="feature-num">01</span><h3>Solver &amp; visualiser</h3><p>Enter or randomise a puzzle, choose an algorithm and heuristic, then play, pause and step through every expansion and the final solution path.</p></a></div>
+        <div class="col-md-4"><a class="feature" href="#compare"><span class="feature-num">02</span><h3>Comparison</h3><p>Run BFS, DFS, DLS, IDDLS, UCS, GBFS and A* on the same puzzle and compare nodes expanded, moves, time and memory.</p></a></div>
+        <div class="col-md-4"><a class="feature" href="#algorithms"><span class="feature-num">03</span><h3>Algorithm notes</h3><p>Description, working principle, advantages, limitations, complexity, completeness and optimality of each algorithm.</p></a></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================== SOLVER =============================== -->
+<section class="page" id="page-solver" hidden>
+  <div class="container-xl">
+    <div class="page-head">
+      <div>
+        <p class="eyebrow">Solver</p>
+        <h1 class="page-title">Solve &amp; visualise</h1>
+      </div>
+      <span class="pill pill-gbfs">Assigned: Greedy Best First Search</span>
+    </div>
+
+    <div class="row g-4">
+      <!-- ------------------------ Left: input panel ------------------------ -->
+      <div class="col-lg-4">
+        <div class="panel sticky-lg">
+          <h2 class="panel-title">1 · Puzzle input</h2>
+          <ul class="nav nav-segment mb-3" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabManual" type="button" role="tab">Enter states</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabRandom" type="button" role="tab">Random puzzle</button></li>
+          </ul>
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="tabManual" role="tabpanel">
+              <div class="row g-2">
+                <div class="col-6">
+                  <label class="form-label" for="startInput">Initial state</label>
+                  <textarea id="startInput" class="form-control state-input" rows="3" spellcheck="false">283
+164
+7_5</textarea>
+                </div>
+                <div class="col-6">
+                  <label class="form-label" for="goalInput">Goal state</label>
+                  <textarea id="goalInput" class="form-control state-input" rows="3" spellcheck="false">123
+8_4
+765</textarea>
+                </div>
+              </div>
+              <p class="hint">Use digits 1–8 and <span class="mono">_</span> or <span class="mono">0</span> for the blank. One row per line, or all 9 on one line.</p>
+              <label class="form-label" for="presetSelect">Examples</label>
+              <select id="presetSelect" class="form-select">
+                <option value="">Choose an example…</option>
+                <option value="283164705|123804765">Assignment example (5 moves)</option>
+                <option value="123405786|123456780">Easy (2 moves)</option>
+                <option value="641302758|123456780">Medium (14 moves)</option>
+                <option value="087654321|123456780">Hard (28 moves)</option>
+                <option value="867254301|123456780">Hardest (31 moves)</option>
+                <option value="123456870|123456780">Unsolvable example</option>
+              </select>
+            </div>
+            <div class="tab-pane fade" id="tabRandom" role="tabpanel">
+              <label class="form-label" for="difficulty">Difficulty (random moves from the goal)</label>
+              <select id="difficulty" class="form-select mb-3">
+                <option value="8">Easy — 8 shuffles</option>
+                <option value="20" selected>Medium — 20 shuffles</option>
+                <option value="60">Hard — 60 shuffles</option>
+              </select>
+              <button id="randomBtn" class="btn btn-outline-primary w-100" type="button">Generate Random Puzzle</button>
+              <p class="hint">Shuffling by legal moves from the goal state guarantees the puzzle is solvable. The goal state is taken from the “Enter states” tab.</p>
+            </div>
+          </div>
+
+          <h2 class="panel-title mt-4">2 · Algorithm</h2>
+          <select id="algoSelect" class="form-select">
+            <optgroup label="Informed search">
+              <option value="gbfs" selected>★ Greedy Best First Search (GBFS) — assigned</option>
+              <option value="astar">A* Search</option>
+            </optgroup>
+            <optgroup label="Uninformed search">
+              <option value="bfs">Breadth First Search (BFS)</option>
+              <option value="dfs">Depth First Search (DFS)</option>
+              <option value="dls">Depth Limited Search (DLS)</option>
+              <option value="iddls">Iterative Deepening DLS (IDDLS)</option>
+              <option value="ucs">Uniform Cost Search (UCS)</option>
+            </optgroup>
+          </select>
+
+          <div id="heuristicGroup" class="mt-3">
+            <label class="form-label">Heuristic h(n)</label>
+            <div class="seg-radio">
+              <input type="radio" class="btn-check" name="heuristic" id="hManhattan" value="manhattan" checked>
+              <label class="btn" for="hManhattan">Manhattan</label>
+              <input type="radio" class="btn-check" name="heuristic" id="hMisplaced" value="misplaced">
+              <label class="btn" for="hMisplaced">Misplaced tiles</label>
+            </div>
+          </div>
+          <div id="depthGroup" class="mt-3" hidden>
+            <label class="form-label" for="depthLimit">Depth limit (l)</label>
+            <input id="depthLimit" type="number" class="form-control" min="0" max="60" value="20">
+          </div>
+          <div id="maxDepthGroup" class="mt-3" hidden>
+            <label class="form-label" for="maxDepth">Maximum depth to try</label>
+            <input id="maxDepth" type="number" class="form-control" min="1" max="40" value="31">
+          </div>
+          <p id="algoNote" class="hint mt-2"></p>
+          <div id="inputError" class="alert alert-danger py-2 small mt-3" hidden></div>
+        </div>
+      </div>
+
+      <!-- ---------------------- Right: visualisation ----------------------- -->
+      <div class="col-lg-8">
+        <div class="panel">
+          <div class="boards-row">
+            <div class="board-col">
+              <div class="board-label">Initial state</div>
+              <div id="startBoard" class="board board-sm"></div>
+            </div>
+            <div class="board-col board-col-main">
+              <div class="board-label">Current state <span id="phaseBadge" class="pill pill-muted ms-1">Ready</span></div>
+              <div id="currentBoard" class="board board-lg"></div>
+            </div>
+            <div class="board-col">
+              <div class="board-label">Goal state</div>
+              <div id="goalBoard" class="board board-sm board-goal"></div>
+            </div>
+          </div>
+
+          <!-- Controls -->
+          <div class="controls">
+            <button id="runBtn" class="btn btn-primary" type="button"><span class="ico">▶</span> Run</button>
+            <button id="pauseBtn" class="btn btn-ctl" type="button" disabled><span class="ico">❚❚</span> Pause</button>
+            <button id="resumeBtn" class="btn btn-ctl" type="button" disabled><span class="ico">▶</span> Resume</button>
+            <button id="prevBtn" class="btn btn-ctl" type="button" disabled title="Previous step (←)"><span class="ico">⟨</span> Previous</button>
+            <button id="nextBtn" class="btn btn-ctl" type="button" disabled title="Next step (→)">Next <span class="ico">⟩</span></button>
+            <button id="skipBtn" class="btn btn-ctl" type="button" disabled title="Jump to the solution path">Skip to solution</button>
+            <button id="resetBtn" class="btn btn-ctl" type="button"><span class="ico">↺</span> Reset</button>
+            <div class="speed">
+              <label for="speed" class="form-label mb-0">Speed</label>
+              <input id="speed" type="range" class="form-range" min="1" max="10" value="5">
+              <span id="speedLabel" class="mono small">5×</span>
+            </div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress" role="progressbar" aria-label="Playback progress"><div id="progressBar" class="progress-bar" style="width:0%"></div></div>
+            <div id="progressText" class="mono small text-muted-2">Press Run to start the search.</div>
+          </div>
+        </div>
+
+        <!-- Search process -->
+        <div class="panel mt-4">
+          <div class="d-flex justify-content-between align-items-baseline flex-wrap gap-2">
+            <h2 class="panel-title mb-0">Search process</h2>
+            <span class="hint m-0" id="traceNote"></span>
+          </div>
+          <div class="process-grid mt-3">
+            <div class="node-card">
+              <div class="node-card-label">Current node being expanded</div>
+              <div id="curNodeMini" class="mini-slot"></div>
+            </div>
+            <div class="node-card">
+              <div class="node-card-label">Parent node</div>
+              <div id="parentMini" class="mini-slot"></div>
+            </div>
+            <div class="stat-grid">
+              <div class="stat"><span>Nodes generated</span><b id="sGenerated">0</b></div>
+              <div class="stat"><span>Nodes expanded</span><b id="sExpanded">0</b></div>
+              <div class="stat"><span>Frontier (open)</span><b id="sFrontier">0</b></div>
+              <div class="stat"><span>Explored (closed)</span><b id="sExplored">0</b></div>
+              <div class="stat"><span>Current depth</span><b id="sDepth">–</b></div>
+              <div class="stat"><span>Path cost g(n)</span><b id="sCost">–</b></div>
+              <div class="stat stat-h"><span>Heuristic h(n)</span><b id="sH">–</b></div>
+              <div class="stat stat-h"><span>Evaluation f(n)</span><b id="sF">–</b></div>
+            </div>
+          </div>
+          <div id="fExplain" class="f-explain mono"></div>
+
+          <h3 class="sub-title mt-4">Generated successor states</h3>
+          <div id="successors" class="mini-row"><p class="empty">Successors of the expanded node will appear here.</p></div>
+
+          <div class="row g-3 mt-1">
+            <div class="col-md-6">
+              <h3 class="sub-title">Frontier — open list <span id="frontierOrder" class="hint m-0"></span></h3>
+              <div id="frontierList" class="mini-row mini-row-sm"><p class="empty">—</p></div>
+            </div>
+            <div class="col-md-6">
+              <h3 class="sub-title">Explored — closed list <span class="hint m-0">(most recent first)</span></h3>
+              <div id="exploredList" class="mini-row mini-row-sm"><p class="empty">—</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="panel mt-4" id="summaryPanel" hidden>
+          <h2 class="panel-title">Solution summary</h2>
+          <div id="summary"></div>
+        </div>
+
+        <!-- Solution path -->
+        <div class="panel mt-4" id="pathPanel" hidden>
+          <div class="d-flex justify-content-between align-items-baseline flex-wrap gap-2">
+            <h2 class="panel-title mb-0">Final solution path</h2>
+            <span id="pathNote" class="hint m-0"></span>
+          </div>
+          <div id="movesString" class="moves-string mono mt-2"></div>
+          <div id="solutionPath" class="path-grid mt-3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= COMPARISON ============================= -->
+<section class="page" id="page-compare" hidden>
+  <div class="container-xl">
+    <div class="page-head">
+      <div>
+        <p class="eyebrow">Comparison</p>
+        <h1 class="page-title">All algorithms, one puzzle</h1>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="row g-4 align-items-end">
+        <div class="col-6 col-md-3">
+          <label class="form-label" for="cmpStart">Initial state</label>
+          <textarea id="cmpStart" class="form-control state-input" rows="3" spellcheck="false"></textarea>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label" for="cmpGoal">Goal state</label>
+          <textarea id="cmpGoal" class="form-control state-input" rows="3" spellcheck="false"></textarea>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label" for="cmpDepth">DLS depth limit</label>
+          <input id="cmpDepth" type="number" class="form-control" min="0" max="60" value="20">
+        </div>
+        <div class="col-6 col-md-4 d-flex flex-wrap gap-2">
+          <button id="cmpRandom" class="btn btn-outline-primary" type="button">Random puzzle</button>
+          <button id="cmpRun" class="btn btn-primary" type="button">Run comparison</button>
+        </div>
+      </div>
+      <p class="hint mt-3 mb-0">The puzzle is copied from the Solver page. Each algorithm runs in a background worker on exactly the same instance. Times are measured in your browser, so they vary slightly between runs.</p>
+      <div id="cmpError" class="alert alert-danger py-2 small mt-3" hidden></div>
+    </div>
+
+    <div class="panel mt-4">
+      <div class="table-responsive">
+        <table class="table cmp-table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Algorithm</th><th>Type</th><th>Solution found</th><th class="num">Moves</th><th class="num">Nodes expanded</th>
+              <th class="num">Nodes generated</th><th class="num">Max depth</th><th class="num">Time</th><th>Memory</th><th>Optimal?</th>
+            </tr>
+          </thead>
+          <tbody id="cmpBody">
+            <tr><td colspan="10" class="empty">Press “Run comparison” to fill the table.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="row g-4 mt-0">
+      <div class="col-lg-7">
+        <div class="panel h-100">
+          <h2 class="panel-title">Nodes expanded <span class="hint m-0">(log scale)</span></h2>
+          <div id="cmpChart" class="bar-chart"><p class="empty">—</p></div>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="panel h-100">
+          <h2 class="panel-title">What the numbers show</h2>
+          <div id="cmpInsights"><p class="empty">Insights appear after a run.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= ALGORITHMS ============================= -->
+<section class="page" id="page-algorithms" hidden>
+  <div class="container-xl">
+    <div class="page-head">
+      <div>
+        <p class="eyebrow">Algorithm information</p>
+        <h1 class="page-title">How each search works</h1>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">At a glance</h2>
+      <div class="table-responsive">
+        <table class="table glance-table mb-0" id="glanceTable"></table>
+      </div>
+      <p class="hint mt-2 mb-0"><i>b</i> = branching factor, <i>d</i> = depth of the shallowest solution, <i>m</i> = maximum depth, <i>l</i> = depth limit, <i>C*</i> = optimal cost, <i>ε</i> = smallest step cost.</p>
+    </div>
+
+    <h2 class="section-title mt-5">Heuristics</h2>
+    <div class="row g-4" id="heuristicCards"></div>
+
+    <h2 class="section-title mt-5">Algorithms</h2>
+    <div class="accordion algo-accordion" id="algoAccordion"></div>
+  </div>
+</section>
+</main>
+
+<footer class="app-footer">
+  <div class="container-xl d-flex flex-wrap justify-content-between gap-3">
+    <div>
+      <b>Thanuku Samuel Gullison Kishore Patro</b> · <span class="mono">24BCE0867</span><br>
+      Artificial Intelligence — Digital Assignment (Case Study) · Assigned algorithm: Greedy Best First Search
+    </div>
+    <div class="text-md-end">
+      Built with HTML5, CSS3, JavaScript (ES6) and Bootstrap 5<br>
+      <a href="https://github.com/samuelpatro2007-svg/AI-8Puzzle-Visualizer" id="repoLink" target="_blank" rel="noopener">Source on GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/puzzle.js"></script>
+<script src="js/algorithms.js"></script>
+<script src="js/info.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
